@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "SMA"
+version = "0.1.0"
+description = "Gather data every 5 sechonds, then calculate and print sma for one and five minute intervals "
+authors = ["belmik <belmik.mail@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "2.27.1"
+
+[tool.poetry.dev-dependencies]
+mypy = "~0.940"
+isort = "~5.10"
+black = "~22.1"
+bpython = "~0.22"
+flake8 = "~4.0"
+types-requests = "~2.27"
+
+[tool.black]
+line-length = 120
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
