@@ -4,7 +4,7 @@ from decimal import Decimal, getcontext
 from json import JSONDecodeError
 from os import environ
 from time import sleep
-from typing import Any
+from typing import Any, Optional
 
 import requests
 
@@ -35,10 +35,12 @@ def get_new_data(url: str) -> Any:
     return data["rates"]
 
 
-def init_collection() -> dict[str, deque[Decimal]]:
+def init_collection() -> Optional[dict[str, deque[Decimal]]]:
     data = get_new_data(EXCHANGE_RATE_ENDPOINT_URL)
-    pairs = {}
+    if not data:
+        return None
 
+    pairs = {}
     for item in data:
         price_deque: deque[Decimal] = deque(maxlen=60)
         price_deque.append(Decimal(str(item["price"])))
@@ -49,11 +51,21 @@ def init_collection() -> dict[str, deque[Decimal]]:
     return pairs
 
 
-def update_collection(pairs: dict[str, deque[Decimal]]) -> dict[str, deque[Decimal]]:
+def update_collection(pairs: dict[str, deque[Decimal]]) -> Optional[dict[str, deque[Decimal]]]:
     new_data = get_new_data(EXCHANGE_RATE_ENDPOINT_URL)
+    if not new_data:
+        return None
 
     for item in new_data:
-        pairs[item["pair"]].append(Decimal(str(item["price"])))
+        if item["pair"] in pairs:
+            pairs[item["pair"]].append(Decimal(str(item["price"])))
+            continue
+
+        # in case new pairs added by the endpoint
+        price_deque: deque[Decimal] = deque(maxlen=60)
+        price_deque.append(Decimal(str(item["price"])))
+        pair = {item["pair"]: price_deque}
+        pairs.update(pair)
 
     return pairs
 
@@ -68,10 +80,21 @@ def calculate_ma(prices: deque[Decimal], size: int) -> Decimal:
 
 if __name__ == "__main__":
     print("Starting gathering data, you need to wait at least one minute before ma starts to showing up.")
-    pairs = init_collection()
+    while True:
+        pairs = init_collection()
+        if not pairs:
+            print("Trying again after 5 sec")
+            sleep(5)
+            continue
+        break
+
     while True:
         sleep(5)
         pairs = update_collection(pairs)
+        if not pairs:
+            print("Trying again after 5 sec")
+            continue
+
         for pair, prices in pairs.items():
             ma_12 = calculate_ma(prices, 12)
             ma_60 = calculate_ma(prices, 60)
